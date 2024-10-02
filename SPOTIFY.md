@@ -44,7 +44,8 @@ ggplot(top_10_musicas, aes(x = reorder(track_name, in_spotify_playlists), y = in
        y = "Quantidade em Playlists do Spotify") +
   theme_light()
 
-#Podemos analisar que mesmo "Blinding Lights" se mantem como a musica mais ouvida e em mais playlists no spotify.
+#Podemos analisar que me[Spotify Most Streamed Songs.csv](https://github.com/user-attachments/files/17234891/Spotify.Most.Streamed.Songs.csv)
+smo "Blinding Lights" se mantem como a musica mais ouvida e em mais playlists no spotify.
 #Outro caso: "One Dance" do Drake é a segunda musica mais posta em playlists no spotify, porém é a sexta música mais streamada.
 #Outro: "Starboy" segue em 4 lugar com mais playlists porém é a décima música mais ouvida.
 #Podemos analisar que há uma variação de popularidade. Com exceção de "Blinding Lights", não podemos afirmar com certeza que as
