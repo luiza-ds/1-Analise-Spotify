@@ -1,39 +1,44 @@
 # 1-Projeto
 Most Streamed Songs on Spotify
 
-Nessa análise através das músicas mais ouvidas do Spotify, eu busco entender como se comportam as músicas através dos anos e como fatores como Dançabilidade e Batidas Por Minuto resultam em uma música de sucesso ou não. Dentro dessa análise você pode encontras insights das músicas mais ouvidas, gráficos de dispersão, correlação e curiosidades musicais de (talvez) seus artistas favoritos. 
+library(ggplot2)
+library(dplyr)
+library(scales) #biblioteca para a escala de numeros grandes
 
 musicas <- read.csv("Spotify Most Streamed Songs.csv")
 
 str(musicas)
-
-attach(musicas)
-
 summary(musicas)
+musicas <- na.omit(musicas)
 
-na.omit(musicas)
-
-musicas <- musicas[,-25]
 musicas$mode <- as.factor(musicas$mode)
 musicas$key <- as.factor(musicas$key)
 
 head(musicas)
 #tirei colunas do dia e do ano lançados, por enquanto nao sera necessário
-musicas <- subset(musicas, select = -c(released_month, released_day))
+musicas <- subset(musicas, select = -c(released_month, released_day, acousticness_.,instrumentalness_.,liveness_.,speechiness_.))
 
 #transformei a variavel streams em numerico
 musicas$streams <- as.numeric(musicas$streams)
 
+
+#plotando um grafico para analisar a distribuição de streams 
+#com um espaço de 50 milhoes de streams
+
+ggplot(musicas, aes(x = streams)) +
+  geom_histogram(binwidth = 50000000, fill = "blue", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribuição de Streams das Músicas no Spotify",
+       x = "Streams",
+       y = "Frequência")
+
+
+
 #ordenei todas as musicas de forma descrescente
-musicas_ordenadas <- musicas[order(-musicas$streams), ]
+musicas <- musicas[order(-musicas$streams), ]
 
 #peguei as 10 primeiras musicas mais ouvidas
-top_10_musicas <- head(musicas_ordenadas, 10)
-
-#farei uma inferencia com uma amostra aleatoria maior 
-
-top250 <- head(musicas_ordenadas, 250)
-
+top_10_musicas <- head(musicas, 10)
 
 #fazendo um grafico das top10 musicas, em ordem das que estão em mais playlists mo spotify
 ggplot(top_10_musicas, aes(x = reorder(track_name, in_spotify_playlists), y = in_spotify_playlists)) +
@@ -44,8 +49,12 @@ ggplot(top_10_musicas, aes(x = reorder(track_name, in_spotify_playlists), y = in
        y = "Quantidade em Playlists do Spotify") +
   theme_light()
 
-#Podemos analisar que me[Spotify Most Streamed Songs.csv](https://github.com/user-attachments/files/17234891/Spotify.Most.Streamed.Songs.csv)
-smo "Blinding Lights" se mantem como a musica mais ouvida e em mais playlists no spotify.
+
+#calcularemos a correlação entre a quantidade de playlist com a quantidade de streams das musicas
+cor(top_10_musicas$in_spotify_playlists, top_10_musicas$streams)
+#com uma resposta de 0.5139794, podemos concluir que a correlação é moderada
+
+#Podemos analisar que mesmo "Blinding Lights" se mantem como a musica mais ouvida e em mais playlists no spotify.
 #Outro caso: "One Dance" do Drake é a segunda musica mais posta em playlists no spotify, porém é a sexta música mais streamada.
 #Outro: "Starboy" segue em 4 lugar com mais playlists porém é a décima música mais ouvida.
 #Podemos analisar que há uma variação de popularidade. Com exceção de "Blinding Lights", não podemos afirmar com certeza que as
@@ -54,71 +63,158 @@ smo "Blinding Lights" se mantem como a musica mais ouvida e em mais playlists no
 
 
 #Teve um ano com mais hits?
-musicas_2022ordenadas <- musicas_2022[order(-musicas_2022$streams), ]
 
 musicas$streams <- format(musicas$streams, big.mark = ",", scientific = FALSE)
+
+#farei uma inferencia com uma amostra aleatoria maior 
+
+top250 <- head(musicas, 250)
+
 str(musicas)
 
-musicas_2022ordenadas$streams <- format(musicas_2022ordenadas$streams, big.mark = ",", scientific = FALSE)
-
 ggplot(top250, aes(x= released_year))+
-  geom_bar()
-
-#fazendo um grafico teste com 250 faixas musicais, como inferencia, vi que os anos que atecedem 2010 possuem 
-#poucas músicas lançadas. 
-
-
-#fazendo um filtro das musicas lançadas em 2010 ou após esse ano
-musicas_2010 <- musicas %>%
-  filter(released_year >= 2010)
-
-ggplot(musicas_2010, aes(x= released_year))+
-  geom_bar(fill = "green")+
-  labs(title = "Músicas lançadas a partir de 2010",
+  geom_bar(fill = "skyblue", color = "black")+
+  labs(title = "Número de Músicas lançadas por ano (Top 250)",
        x = "Ano de Lançamento",
-       y = "Quantidade de Músicas")+
+       y= "Frequência")+
   theme_bw()
 
-table(musicas_2010$released_year)
-#Temos 402 músicas lançadas em 2022 que estão no nosso banco de dados das músicas mais streamadas do Spotify
+#fazendo um grafico teste com 250 faixas musicais, como inferencia, vi que os anos que atecedem 2010 possuem 
+#poucas músicas lançadas.
+#Pode indicar uma mudança na indústria musical ou na popularidade das plataformas de streaming.
 
 
-#Agora, faremos algumas analises estatísticas a partir dessas informações. 
+#Iremos verificar agora o ano com mais Hits. 
 
-402/953
-#42% é equivalente a porcentagem de músicas do ano de 2022 que estão entre as mais streamadas do spotify. 
-#Equivalente a quase a metade do meu banco de dados. 
+musicas$streams <- as.numeric(musicas$streams)
+
+#usando o pipe, entramos no nosso banco de dados, agrupamos por ano e logo apos sumerizamos cada stream por ano. Nós devolvendo a soma de streams por ano.
+#Assim, descobriremos qual ano possui mais streams e por consequencia o ano com mais hits. 
+
+ano_mais_hits <- musicas %>%
+  group_by(released_year) %>%
+  summarise(streams_por_ano = sum(streams, na.rm = TRUE))
+#criei um novo data frame somente com os anos e o total de streams
+
+#grafico de linhas para avaliar o comportamento de streams por ano
+ggplot(ano_mais_hits, aes(x = released_year, y = streams_por_ano))+
+  geom_point(col = "darkblue")+
+  geom_line()+
+  labs(title = "Quantidade de Streams por Ano",
+       x = "Ano de Lançamento",
+       y = "Total de Streams")+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Observando pelo gráfico acima, podemos perceber uma maior concetração de streams após 2000-2010
+
+# Vamos calcular o total de streams para as músicas lançadas após 2010.
+ano_mais_hits_2010 <- musicas_2010 %>%
+  group_by(released_year) %>%
+  summarise(total_streams_2010 = sum(streams, na.rm = TRUE))
+
+ggplot(ano_mais_hits_2010, aes(x = released_year, y = total_streams_2010)) +
+  geom_bar(stat = "identity", fill = "purple", col = "black") +
+  labs(title = "Total de Streams de Músicas Lançadas a partir de 2010",
+       x = "Ano de Lançamento",
+       y = "Total de Streams") +
+  theme_bw()
+
+#Assim, concluimos que em 2022 foi o ano com mais Streams na história do Spotify até o momento com 1.164.023.779,62 de streams. 
+
 
 
 #####Média de Streams por ano
 
-musicas_2010$streams <- as.numeric(musicas_2010$streams)
 
+#Faremos um filtro para criar um data frame somente com as musicas de 2010 e posteriormente
+musicas_2010 <- musicas %>%
+  filter(released_year >= 2010)
+
+#Estamos agrupando por ano e calculando a media de streams de cada ano e criando a variável "media_streams" no nosso novo data frame. 
 media_streams_por_ano <- musicas_2010 %>%
   group_by(released_year) %>%
   summarise(media_streams = mean(streams, na.rm = TRUE))
 
+#Plotando a media de streams por ano, temos: 
+
 ggplot(media_streams_por_ano, aes(x = released_year, y = media_streams)) +
-  geom_line(color = "blue") +
-  geom_point() +
+  geom_line(color = "red") +
+  geom_point(color = "darkblue") +
   labs(title = "Média de Streams por Ano",
        x = "Ano de Lançamento",
        y = "Média de Streams") +
-  theme_minimal()
+  scale_y_continuous(labels = comma) +
+  theme_bw()
+
+#Podemos analisar que a media de streams por ano foi decaindo após o ano 
+#de 2017. Podemos pensar que houveram mais musicas que alcançaram um sucesso global
+#ente 2016 e 2019, no entando essas mais recentes possam não ter tido tempo o suficiente para acumularem streams, entre outros diversos motivos.
 
 
 
 ##Músicas Mais ouvida de cada Ano
 
-musicas_mais_ouvidas_ano <- musicas %>%
-  group_by(released_year) %>%
-  slice_max(order_by = streams, n = 1, with_ties = FALSE) 
+#*Utilizando a métrica de 2010 pois é melhor para que o nosso gráfico fique visível.
 
-ggplot(musicas_mais_ouvidas_ano, aes(x = released_year, y = streams, label = track_name)) +
-  geom_line() +
-  geom_point() +
-  geom_text(aes(label = track_name), vjust = -0.5, size = 3) +  # Adiciona o nome da música no gráfico
-  labs(title = "Música mais ouvida por ano",
+musicas_mais_ouvidas_ano <- musicas_2010 %>%
+  group_by(released_year) %>%
+  slice_max(streams, n = 1) %>%
+  select(released_year, track_name, artist.s._name, streams)
+
+ggplot(musicas_mais_ouvidas_ano, aes(x=released_year, y=streams))+
+  geom_point(fill = "blue",size = 1)+
+  geom_text(aes(label = track_name, size = 1))+
+  scale_y_continuous(labels = comma) +
+  labs(title = "Músicas mais Ouvidas de cada Ano",
        x = "Ano de Lançamento",
+       y= "Streams")+
+  theme_bw()
+
+
+#E por último iremos fazer correlações das músicas mais ouvidas com "Danceability" e "BPM".
+musicas$bpm <- as.numeric(musicas$bpm)
+musicas$danceability_. <- as.numeric(musicas$danceability_.)
+
+sum(is.na(musicas$streams))
+musicas <- na.omit(musicas)
+
+
+cor(musicas$streams, musicas$danceability)
+cor(musicas$streams, musicas$bpm)
+
+
+ggplot(musicas, aes(x = danceability_., y = streams)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "Relação entre Streams e Danceability",
+       x = "Danceability",
+       y = "Streams")+
+  theme_bw()
+
+ggplot(musicas, aes(x = bpm, y = streams)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "Relação entre Streams e BPM",
+       x = "BPM",
+       y = "Streams")+
+  theme_bw()
+
+
+#---------------------------------------------------------
+#Análise SZA
+
+sza <- musicas %>%
+  filter(musicas$artist.s._name == "SZA")
+
+sza <- sza[order(-sza$streams), ]
+
+ggplot(sza, aes(x = reorder(track_name, streams), y = streams)) +
+  geom_bar(stat = "identity", fill = "purple", col = "black") +
+  scale_y_continuous(labels = comma) +
+  coord_flip() +  # Inverte os eixos para melhor visualização
+  labs(title = "Streams das Músicas da SZA",
+       x = "Música",
        y = "Número de Streams") +
   theme_bw()
+  
